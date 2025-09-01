@@ -1,0 +1,309 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:reminder_calender_app/config.dart';
+// import 'package:reminder_calender_app/settings/presentation/subpages/about_the_developer_page.dart';
+import 'package:reminder_calender_app/settings/presentation/subpages/change_password_page.dart';
+import 'package:reminder_calender_app/settings/presentation/subpages/change_username_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  String? username;
+  String? email;
+
+  @override
+  void initState() {
+    super.initState();
+    getUserNameAndSignIn();
+  }
+
+  Future<void> getUserNameAndSignIn() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
+
+    if (userId != null) {
+      final url = Uri.parse('$getData/$userId');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (kDebugMode) {
+          print('User data response: $data');
+        }
+
+        if (data["status"] == true) {
+          final user = data["user"];
+
+          // Save user details locally
+          await prefs.setString("userId", user["id"]);
+          await prefs.setString("username", user["username"]);
+          await prefs.setString("email", user["email"]);
+
+          // Update state so UI refreshes
+          setState(() {
+            username = user["username"];
+            email = user["email"];
+          });
+
+          if (kDebugMode) {
+            print("Saved user: ${user["username"]} (${user["id"]})");
+          }
+        } else {
+          if (kDebugMode) {
+            print("Fetch failed: ${data["message"]}");
+          }
+        }
+      } else {
+        if (kDebugMode) {
+          print("Server error: ${response.statusCode}");
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 51, 51, 51),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        centerTitle: true,
+        title: Text('Settings Page'),
+      ),
+      body: Center(
+        child: Column(
+          children: [
+            SizedBox(height: 60),
+            GestureDetector(
+              onTap: () {
+                modalBottomSheet(context);
+              },
+              child: CircleAvatar(
+                radius: 90,
+                child: Icon(Icons.person, size: 100),
+              ),
+            ),
+            SizedBox(height: 20),
+            Text(
+              '$username',
+              style: TextStyle(color: Colors.white70, fontSize: 30),
+            ),
+            SizedBox(height: 0),
+            Text(
+              '$email',
+              style: TextStyle(color: Colors.white70, fontSize: 15),
+            ),
+            SizedBox(height: 35),
+            settingsOptionsContainer('Change Username', Colors.white70, () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ChangeUsernamePage()),
+              );
+            }),
+            settingsOptionsContainer('About the Developer', Colors.white70, () {
+              aboutTheDeveloperPage(context); // ✅ now just call the modal
+            }),
+            settingsOptionsContainer('Change Password', Colors.white70, () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ChangePasswordPage()),
+              );
+            }),
+            settingsOptionsContainer('LogOut', Colors.red, () {
+              logout(context); // implement later
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> modalBottomSheet(BuildContext context) {
+    return showModalBottomSheet(
+      backgroundColor: Colors.grey[850],
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          padding: EdgeInsets.all(20),
+          height: 300,
+          child: Column(
+            children: [
+              SizedBox(height: 20),
+              Text(
+                textAlign: TextAlign.center,
+                'Would you like to change your Profile Picture',
+                style: TextStyle(fontSize: 18, color: Colors.white70),
+              ),
+              SizedBox(height: 40),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    height: 100,
+                    width: 150,
+                    decoration: BoxDecoration(
+                      color: Colors.blueGrey,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.camera_alt),
+                  ),
+                  SizedBox(width: 30),
+                  Container(
+                    height: 100,
+                    width: 150,
+                    decoration: BoxDecoration(
+                      color: Colors.blueGrey,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.browse_gallery),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> aboutTheDeveloperPage(BuildContext context) {
+    return showModalBottomSheet(
+      backgroundColor: Colors.grey[850],
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          padding: EdgeInsets.all(20),
+          height: 400,
+          child: Column(
+            children: [
+              SizedBox(height: 20),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundImage: NetworkImage(
+                      'https://media.licdn.com/dms/image/v2/D4E03AQHFK2kLYhLxcA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1730543950779?e=1759363200&v=beta&t=vdAGLCoXu7iOg6gNGkXb2OQTnAn-E_DWPxarOGzZAZc',
+                    ),
+                  ),
+                  SizedBox(width: 30),
+                  Text(
+                    'Saiyam Kalra',
+                    style: TextStyle(color: Colors.white70, fontSize: 20),
+                  ),
+                  Spacer(),
+                  GestureDetector(
+                    onTap: () async {
+                      final Uri linkedInUrl = Uri.parse(
+                        'https://www.linkedin.com/in/saiyam-kalra-25a53432a/',
+                      );
+                      try {
+                        await launchUrl(
+                          linkedInUrl,
+                          mode: LaunchMode
+                              .externalApplication, // opens in browser/app
+                        );
+                      } catch (e) {
+                        if (kDebugMode) {
+                          print('Could not launch $linkedInUrl: $e');
+                        }
+                      }
+                    },
+                    child: Container(
+                      height: 50,
+                      width: 80,
+                      decoration: BoxDecoration(
+                        color: Color(0xFF0A66C2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.link),
+                    ),
+                  ),
+                  SizedBox(width: 15),
+                ],
+              ),
+              SizedBox(height: 20),
+              Text(
+                // textAlign: TextAlign.center,
+                'B.Tech student at VIT Vellore with a strong interest in technology, app development, and problem-solving. I specialize in building cross-platform mobile apps using Flutter and React Native (Expo), with hands-on experience in:',
+                style: TextStyle(fontSize: 16, color: Colors.white70),
+              ),
+              SizedBox(height: 10),
+              Row(
+                children: [
+                  Text(
+                    // textAlign: TextAlign.left,
+                    '1) RESTful API integration',
+                    style: TextStyle(fontSize: 16, color: Colors.white70),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Text(
+                    '2) State management (like BLoC)',
+                    style: TextStyle(fontSize: 16, color: Colors.white70),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Text(
+                    '3) Backend services using Supabase and Firebase',
+                    style: TextStyle(fontSize: 16, color: Colors.white70),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Text(
+                    '4) Real-time data visualization & charts',
+                    style: TextStyle(fontSize: 16, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget settingsOptionsContainer(
+    String text,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 3),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 60,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Text(text, style: TextStyle(color: color, fontSize: 18)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> logout(BuildContext context) async {
+    return;
+  }
+}
