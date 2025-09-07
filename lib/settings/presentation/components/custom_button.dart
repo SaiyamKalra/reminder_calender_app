@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+// ignore: must_be_immutable
 class CustomButton extends StatelessWidget {
-  const CustomButton({super.key});
+  final VoidCallback onTap;
+  const CustomButton({super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -15,9 +17,7 @@ class CustomButton extends StatelessWidget {
           ),
           minimumSize: Size(double.infinity, 50),
         ),
-        onPressed: () {
-          Navigator.pop(context);
-        },
+        onPressed: onTap,
         child: Center(
           child: Text(
             'Save Changes',

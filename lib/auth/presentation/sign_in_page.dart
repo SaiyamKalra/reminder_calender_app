@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:reminder_calender_app/auth/presentation/components/custom_text_field.dart';
+import 'package:reminder_calender_app/utils/custom_text_field.dart';
 import 'package:reminder_calender_app/calenderPage/presentation/calender_page.dart';
 import 'package:reminder_calender_app/config.dart';
 import 'package:shared_preferences/shared_preferences.dart';

@@ -1,10 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:reminder_calender_app/config.dart';
-// import 'package:reminder_calender_app/settings/presentation/subpages/about_the_developer_page.dart';
 import 'package:reminder_calender_app/settings/presentation/subpages/change_password_page.dart';
 import 'package:reminder_calender_app/settings/presentation/subpages/change_username_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,11 +21,123 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   String? username;
   String? email;
+  File? selectedImage;
+  String? avatarUrl; // 👈 Corrected: Declare avatarUrl here
 
   @override
   void initState() {
     super.initState();
     getUserNameAndSignIn();
+  }
+
+  Future<void> galleryImage() async {
+    final image = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+    );
+    if (image != null) {
+      final fileExtension = image.path.split('.').last.toLowerCase();
+      if (fileExtension == 'jpg' ||
+          fileExtension == 'jpeg' ||
+          fileExtension == 'png') {
+        setState(() {
+          selectedImage = File(image.path);
+        });
+        // Corrected: await the upload process
+        await avatarUrlEnter();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error: Unsupported file type. Please select a JPG or PNG image.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> cameraImage() async {
+    final image = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      imageQuality: 90,
+    );
+    if (image != null) {
+      final fileExtension = image.path.split('.').last.toLowerCase();
+      if (fileExtension == 'jpg' ||
+          fileExtension == 'jpeg' ||
+          fileExtension == 'png') {
+        setState(() {
+          selectedImage = File(image.path);
+        });
+        await avatarUrlEnter();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error: Unsupported file type. Please take a JPG or PNG image.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> avatarUrlEnter() async {
+    if (selectedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No image selected, please select one')),
+      );
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final email = prefs.getString('email');
+      final url = Uri.parse('$avatarUrlUpdate/$email');
+      final request = http.MultipartRequest('PATCH', url);
+
+      request.files.add(
+        await http.MultipartFile.fromPath('avatar', selectedImage!.path),
+      );
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(responseBody);
+        if (kDebugMode) {
+          print("Avatar updated successfully");
+        }
+        setState(() {
+          avatarUrl =
+              data['user']['avatarUrl']; // 👈 Corrected: Update avatarUrl
+        });
+        // Re-fetch user data to ensure everything is in sync
+        getUserNameAndSignIn();
+      } else {
+        if (kDebugMode) {
+          print(
+            "Server returned an error with status code: ${response.statusCode}",
+          );
+          print("Response body: $responseBody");
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Avatar update failed. Please try again.')),
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Network or other error occurred: $e');
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'An error occurred. Please check your network connection.',
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> getUserNameAndSignIn() async {
@@ -44,16 +157,15 @@ class _SettingsPageState extends State<SettingsPage> {
 
         if (data["status"] == true) {
           final user = data["user"];
-
-          // Save user details locally
           await prefs.setString("userId", user["id"]);
           await prefs.setString("username", user["username"]);
           await prefs.setString("email", user["email"]);
 
-          // Update state so UI refreshes
           setState(() {
             username = user["username"];
             email = user["email"];
+            avatarUrl =
+                user["avatarUrl"]; // 👈 Corrected: Get avatarUrl from the server
           });
 
           if (kDebugMode) {
@@ -91,18 +203,48 @@ class _SettingsPageState extends State<SettingsPage> {
               },
               child: CircleAvatar(
                 radius: 90,
-                child: Icon(Icons.person, size: 100),
+                // 👈 Corrected: Conditional display logic
+                child: (avatarUrl != null && avatarUrl!.isNotEmpty)
+                    ? ClipOval(
+                        child: Image.network(
+                          avatarUrl!,
+                          fit: BoxFit.cover,
+                          width: 180,
+                          height: 180,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(Icons.person, size: 100);
+                          },
+                        ),
+                      )
+                    : (selectedImage != null)
+                    ? ClipOval(
+                        child: Image.file(
+                          selectedImage!,
+                          fit: BoxFit.cover,
+                          width: 180,
+                          height: 180,
+                        ),
+                      )
+                    : Icon(Icons.person, size: 100),
               ),
             ),
             SizedBox(height: 20),
             Text(
               '$username',
-              style: TextStyle(color: Colors.white70, fontSize: 30),
+              style: TextStyle(
+                color: Colors.green[300],
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             SizedBox(height: 0),
             Text(
               '$email',
-              style: TextStyle(color: Colors.white70, fontSize: 15),
+              style: TextStyle(
+                color: Colors.green[300],
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             SizedBox(height: 35),
             settingsOptionsContainer('Change Username', Colors.white70, () {
@@ -112,7 +254,7 @@ class _SettingsPageState extends State<SettingsPage> {
               );
             }),
             settingsOptionsContainer('About the Developer', Colors.white70, () {
-              aboutTheDeveloperPage(context); // ✅ now just call the modal
+              aboutTheDeveloperPage(context);
             }),
             settingsOptionsContainer('Change Password', Colors.white70, () {
               Navigator.push(
@@ -121,7 +263,7 @@ class _SettingsPageState extends State<SettingsPage> {
               );
             }),
             settingsOptionsContainer('LogOut', Colors.red, () {
-              logout(context); // implement later
+              logout(context);
             }),
           ],
         ),
@@ -149,24 +291,36 @@ class _SettingsPageState extends State<SettingsPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    height: 100,
-                    width: 150,
-                    decoration: BoxDecoration(
-                      color: Colors.blueGrey,
-                      borderRadius: BorderRadius.circular(12),
+                  GestureDetector(
+                    onTap: () {
+                      cameraImage();
+                      Navigator.pop(context);
+                    },
+                    child: Container(
+                      height: 100,
+                      width: 150,
+                      decoration: BoxDecoration(
+                        color: Colors.blueGrey,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.camera_alt),
                     ),
-                    child: Icon(Icons.camera_alt),
                   ),
                   SizedBox(width: 30),
-                  Container(
-                    height: 100,
-                    width: 150,
-                    decoration: BoxDecoration(
-                      color: Colors.blueGrey,
-                      borderRadius: BorderRadius.circular(12),
+                  GestureDetector(
+                    onTap: () {
+                      galleryImage();
+                      Navigator.pop(context);
+                    },
+                    child: Container(
+                      height: 100,
+                      width: 150,
+                      decoration: BoxDecoration(
+                        color: Colors.blueGrey,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.browse_gallery),
                     ),
-                    child: Icon(Icons.browse_gallery),
                   ),
                 ],
               ),
@@ -210,8 +364,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       try {
                         await launchUrl(
                           linkedInUrl,
-                          mode: LaunchMode
-                              .externalApplication, // opens in browser/app
+                          mode: LaunchMode.externalApplication,
                         );
                       } catch (e) {
                         if (kDebugMode) {
@@ -234,7 +387,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               SizedBox(height: 20),
               Text(
-                // textAlign: TextAlign.center,
                 'B.Tech student at VIT Vellore with a strong interest in technology, app development, and problem-solving. I specialize in building cross-platform mobile apps using Flutter and React Native (Expo), with hands-on experience in:',
                 style: TextStyle(fontSize: 16, color: Colors.white70),
               ),
@@ -242,7 +394,6 @@ class _SettingsPageState extends State<SettingsPage> {
               Row(
                 children: [
                   Text(
-                    // textAlign: TextAlign.left,
                     '1) RESTful API integration',
                     style: TextStyle(fontSize: 16, color: Colors.white70),
                   ),
