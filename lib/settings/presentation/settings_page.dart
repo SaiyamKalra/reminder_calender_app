@@ -46,6 +46,7 @@ class _SettingsPageState extends State<SettingsPage> {
         // Corrected: await the upload process
         await avatarUrlEnter();
       } else {
+        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -72,6 +73,7 @@ class _SettingsPageState extends State<SettingsPage> {
         });
         await avatarUrlEnter();
       } else {
+        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -122,6 +124,7 @@ class _SettingsPageState extends State<SettingsPage> {
           );
           print("Response body: $responseBody");
         }
+        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Avatar update failed. Please try again.')),
         );
@@ -130,6 +133,7 @@ class _SettingsPageState extends State<SettingsPage> {
       if (kDebugMode) {
         print('Network or other error occurred: $e');
       }
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

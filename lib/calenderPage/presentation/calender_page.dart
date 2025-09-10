@@ -1,3 +1,5 @@
+// calenderPage/presentation/calender_page.dart
+
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +17,7 @@ class CalenderPage extends StatefulWidget {
 
 class _CalenderPageState extends State<CalenderPage> {
   String? username;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -48,6 +51,7 @@ class _CalenderPageState extends State<CalenderPage> {
           // Update state so UI refreshes
           setState(() {
             username = user["username"];
+            _isLoading = false;
           });
 
           if (kDebugMode) {
@@ -63,6 +67,10 @@ class _CalenderPageState extends State<CalenderPage> {
           print("Server error: ${response.statusCode}");
         }
       }
+    } else {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -82,7 +90,9 @@ class _CalenderPageState extends State<CalenderPage> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => SettingsPage()),
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsPage(),
+                    ),
                   );
                 },
                 child: const Icon(Icons.person),
@@ -91,12 +101,14 @@ class _CalenderPageState extends State<CalenderPage> {
           ),
         ],
       ),
-      body: Center(
-        child: Text(
-          username != null ? "Hello, $username!" : "Hello, User",
-          style: const TextStyle(color: Colors.white, fontSize: 20),
-        ),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Center(
+              child: Text(
+                username != null ? "Hello, $username!" : "Hello, User",
+                style: const TextStyle(color: Colors.white, fontSize: 20),
+              ),
+            ),
     );
   }
 }
