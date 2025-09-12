@@ -3,14 +3,16 @@ import 'package:flutter/material.dart';
 // ignore: must_be_immutable
 class CustomTextField extends StatefulWidget {
   final TextEditingController controller;
-  final String labeltext;
+  String labeltext;
   final bool obscureText;
+  String hintText;
   Color color;
   bool readOnly;
   CustomTextField({
     super.key,
     required this.controller,
-    required this.labeltext,
+    this.labeltext = '',
+    this.hintText = '',
     required this.obscureText,
     this.readOnly = false,
     this.color = Colors.white,
@@ -34,6 +36,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           filled: true,
           fillColor: widget.color,
+          hintText: widget.hintText,
           labelText: widget.labeltext,
           labelStyle: TextStyle(color: Colors.black),
         ),

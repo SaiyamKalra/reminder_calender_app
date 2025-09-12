@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:reminder_calender_app/auth/presentation/sign_in_page.dart';
 import 'package:reminder_calender_app/config.dart';
 import 'package:reminder_calender_app/settings/presentation/subpages/change_password_page.dart';
 import 'package:reminder_calender_app/settings/presentation/subpages/change_username_page.dart';
@@ -459,6 +460,54 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> logout(BuildContext context) async {
-    return;
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) {
+      await prefs.clear();
+      Navigator.pushReplacement(
+        // ignore: use_build_context_synchronously
+        context,
+        MaterialPageRoute(builder: (context) => SignInPage()),
+      );
+    }
+    try {
+      final uri = Uri.parse(logoutUser); // 👈 your API endpoint
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        // ✅ Clear local data
+        await prefs.clear();
+
+        // ✅ Navigate to login screen
+        if (context.mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => SignInPage()),
+          );
+        }
+      } else {
+        // Server error
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Logout failed. Try again.')));
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Logout error: $e");
+      }
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Network error while logging out')),
+        );
+      }
+    }
   }
 }
