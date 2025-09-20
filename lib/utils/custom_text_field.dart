@@ -8,6 +8,8 @@ class CustomTextField extends StatefulWidget {
   String hintText;
   Color color;
   bool readOnly;
+  int maxLine;
+  final String? Function(String?)? validator;
   CustomTextField({
     super.key,
     required this.controller,
@@ -16,6 +18,8 @@ class CustomTextField extends StatefulWidget {
     required this.obscureText,
     this.readOnly = false,
     this.color = Colors.white,
+    this.maxLine = 1,
+    this.validator,
   });
 
   @override
@@ -27,11 +31,12 @@ class _CustomTextFieldState extends State<CustomTextField> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
-      child: TextField(
+      child: TextFormField(
         // style: TextStyle(color: Colors.white),
         readOnly: widget.readOnly,
         obscureText: widget.obscureText,
         controller: widget.controller,
+        maxLines: widget.maxLine,
         decoration: InputDecoration(
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           filled: true,
@@ -40,6 +45,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
           labelText: widget.labeltext,
           labelStyle: TextStyle(color: Colors.black),
         ),
+        validator: widget.validator,
       ),
     );
   }
